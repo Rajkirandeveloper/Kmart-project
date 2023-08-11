@@ -1,6 +1,9 @@
 const express=require('express');
 const router=express.Router()
 const Model=require('../models/user');
+const jwt=require('jsonwebtoken');
+const SECRET="SUPERSECRETPROJECT"
+const middleware=require('../utils/middleware')
 router.post('/register',async(req,res)=>{
     const {email,name,password,confirmpassword}=req.body
    
@@ -22,6 +25,23 @@ router.post('/register',async(req,res)=>{
         return res.status(500).send("Database Error")
     }
 })
+
+router.get('/myprofile',middleware,async(req,res)=>{
+    try{
+        const exist= await Model.findById(req.user.id);
+        if(!exist){
+            return res.status(400).send("You are Not Authenticated")
+
+        }
+        res.status(200).json({success:true,data:exist})
+
+    }catch(err){
+        console.log(err)
+        return res.status(500).send("Database Error");
+
+    }
+
+})
 router.post('/login',async(req,res)=>{
     const{email,password}=req.body
     try{
@@ -32,7 +52,17 @@ router.post('/login',async(req,res)=>{
         if(password !== exist.password){
             return res.status(400).send("Passwords Not Matched")
         }
-        return res.status(200).send("Loggin Success")
+        const payload={
+            user:{
+                id: exist._id
+            }
+        }
+        jwt.sign(payload,SECRET,{expiresIn:"1hr"},(err,token)=>{
+            if(err){
+                throw err
+            }
+            return res.status(200).send(token)
+        })
 
     }catch(err){
         console.log(err)
